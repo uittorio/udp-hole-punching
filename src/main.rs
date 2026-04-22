@@ -46,7 +46,7 @@ fn main() {
         return;
     }
 
-    let udp_socket = UdpSocket::bind("127.0.0.1:3400").expect("couldn't bind to address");
+    let udp_socket = UdpSocket::bind("0.0.0.0:3400").expect("couldn't bind to address");
 
     let mut buf = [0; 1024];
     println!("Starting");
