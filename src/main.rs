@@ -1,26 +1,43 @@
-use std::{env, net::UdpSocket};
+use std::{
+    env,
+    net::{Ipv4Addr, UdpSocket},
+};
 
 fn main() {
-    let args = env::args();
+    let mut args = env::args();
 
-    let mode = args.skip(1).next();
+    args.next();
+
+    let mode = args.next();
 
     if let Some(m) = mode
         && m == "--client"
     {
+        let address = args.next().expect("provide address");
+
+        println!("Connecting to address {}", address);
         let udp_socket =
-            UdpSocket::bind("127.0.0.1:3401").expect("couldn't bind to address client");
+            UdpSocket::bind((Ipv4Addr::UNSPECIFIED, 0)).expect("couldn't bind to address client");
+
+        println!("Udp socket bound");
+
         udp_socket
-            .connect("127.0.0.1:3400")
-            .expect("cannot connet to client");
+            .connect(address)
+            .expect("cannot connet to server");
+
+        println!("Connected to server");
 
         udp_socket
             .send(b"ping")
             .expect("Could not send the message");
 
+        println!("Client: Message sent");
+
         let mut buf = [0; 1024];
 
         let number_of_bytes = udp_socket.recv(&mut buf).expect("Cannot receive messages");
+
+        println!("Client: Message received");
 
         let message = &buf[..number_of_bytes];
         let message_str = String::from_utf8_lossy(message);
