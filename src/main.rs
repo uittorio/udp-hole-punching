@@ -1,7 +1,8 @@
 use std::{
     collections::HashMap,
     env::{self, Args},
-    net::{Ipv4Addr, SocketAddr, UdpSocket},
+    net::{Ipv4Addr, SocketAddr, SocketAddrV4, UdpSocket},
+    str::FromStr,
 };
 
 fn main() {
@@ -41,6 +42,31 @@ fn client(mut args: Args) {
         udp_socket
             .send(key.as_bytes())
             .expect("Could not send the message");
+
+        let mut buf = [0; 1024];
+
+        let number_of_bytes = udp_socket.recv(&mut buf).expect("Cannot receive messages");
+
+        let message = &buf[..number_of_bytes];
+        let message_str = String::from_utf8_lossy(message);
+
+        println!("Received address: {}", message_str);
+        let address = SocketAddr::from_str(message_str.as_ref()).expect("Invalid address");
+
+        udp_socket
+            .send_to(b"Ciao", address)
+            .expect("Cannot send message to other client");
+
+        let number_of_bytes = udp_socket.recv(&mut buf).expect("Cannot receive messages");
+
+        let message = &buf[..number_of_bytes];
+        let message_str = String::from_utf8_lossy(message);
+
+        println!("Received message from other client: {}", message_str);
+
+        udp_socket
+            .send_to(b"Come stai", address)
+            .expect("Cannot send message to other client");
     } else {
         udp_socket
             .send(b"ping")
