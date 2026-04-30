@@ -36,21 +36,28 @@ fn client(mut args: Args) {
 
     println!("Connected to server");
 
-    udp_socket
-        .send(b"ping")
-        .expect("Could not send the message");
+    if let Some(key) = args.next() {
+        let key = format!("k:{}", key);
+        udp_socket
+            .send(key.as_bytes())
+            .expect("Could not send the message");
+    } else {
+        udp_socket
+            .send(b"ping")
+            .expect("Could not send the message");
 
-    println!("Client: Message sent");
+        println!("Client: Message sent");
 
-    let mut buf = [0; 1024];
+        let mut buf = [0; 1024];
 
-    let number_of_bytes = udp_socket.recv(&mut buf).expect("Cannot receive messages");
+        let number_of_bytes = udp_socket.recv(&mut buf).expect("Cannot receive messages");
 
-    println!("Client: Message received");
+        println!("Client: Message received");
 
-    let message = &buf[..number_of_bytes];
-    let message_str = String::from_utf8_lossy(message);
-    println!("client received {}", message_str);
+        let message = &buf[..number_of_bytes];
+        let message_str = String::from_utf8_lossy(message);
+        println!("client received {}", message_str);
+    }
 }
 
 fn server() {
@@ -99,7 +106,7 @@ fn server() {
                     .send_to(message.as_bytes(), address_b)
                     .expect("cannot send the message to address b");
             } else {
-                println!("first message, storing address");
+                println!("first message, storing address {}", src_addr);
                 map.insert(key.to_string(), src_addr);
             }
         }
