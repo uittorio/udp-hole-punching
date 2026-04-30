@@ -1,8 +1,12 @@
 use std::{
     collections::HashMap,
     env::{self, Args},
-    net::{Ipv4Addr, SocketAddr, SocketAddrV4, UdpSocket},
+    io::stdin,
+    net::{Ipv4Addr, SocketAddr, UdpSocket},
+    process::Stdio,
     str::FromStr,
+    sync::mpsc::channel,
+    thread,
 };
 
 fn main() {
@@ -43,12 +47,7 @@ fn client(mut args: Args) {
             .send(key.as_bytes())
             .expect("Could not send the message");
 
-        let mut buf = [0; 1024];
-
-        let number_of_bytes = udp_socket.recv(&mut buf).expect("Cannot receive messages");
-
-        let message = &buf[..number_of_bytes];
-        let message_str = String::from_utf8_lossy(message);
+        let message_str = recv(&udp_socket);
 
         println!("Received address: {}", message_str);
         let address = SocketAddr::from_str(message_str.as_ref()).expect("Invalid address");
@@ -61,16 +60,15 @@ fn client(mut args: Args) {
             .send(b"Ciao")
             .expect("Cannot send message to other client");
 
-        let number_of_bytes = udp_socket.recv(&mut buf).expect("Cannot receive messages");
-
-        let message = &buf[..number_of_bytes];
-        let message_str = String::from_utf8_lossy(message);
+        let message_str = recv(&udp_socket);
 
         println!("Received message from other client: {}", message_str);
 
         udp_socket
             .send(b"Come stai")
             .expect("Cannot send message to other client");
+
+        run_chat(udp_socket);
     } else {
         udp_socket
             .send(b"ping")
@@ -78,14 +76,7 @@ fn client(mut args: Args) {
 
         println!("Client: Message sent");
 
-        let mut buf = [0; 1024];
-
-        let number_of_bytes = udp_socket.recv(&mut buf).expect("Cannot receive messages");
-
-        println!("Client: Message received");
-
-        let message = &buf[..number_of_bytes];
-        let message_str = String::from_utf8_lossy(message);
+        let message_str = recv(&udp_socket);
         println!("client received {}", message_str);
     }
 }
@@ -142,4 +133,64 @@ fn server() {
             }
         }
     }
+}
+
+fn run_chat(udp_socket: UdpSocket) {
+    let (tx_stdin, rx_stdin) = channel();
+    let (tx_udp, rx_udp) = channel();
+
+    thread::spawn(move || {
+        loop {
+            let mut buf = String::new();
+            if let Ok(_) = stdin().read_line(&mut buf) {
+                tx_stdin.send(buf).unwrap();
+            } else {
+                tx_stdin.send("exit".to_string()).unwrap();
+            }
+        }
+    });
+
+    thread::spawn({
+        let udp_socket = udp_socket
+            .try_clone()
+            .expect("Should be able to clone a udp socket");
+        move || {
+            loop {
+                let received_message = recv(&udp_socket);
+                tx_udp
+                    .send(received_message)
+                    .expect("Cannot send on channel");
+            }
+        }
+    });
+
+    loop {
+        for message in rx_stdin.try_iter() {
+            if message == "exit" {
+                udp_socket
+                    .send(b"DISCONNECTED")
+                    .expect("Cannot send message");
+                println!("EXITING");
+                return;
+            }
+
+            udp_socket
+                .send(message.as_bytes())
+                .expect("Cannot send message");
+        }
+
+        for message in rx_udp.try_iter() {
+            println!("Message received: {}", message);
+        }
+    }
+}
+
+fn recv(udp_socket: &UdpSocket) -> String {
+    let mut buf = [0; 1024];
+    let number_of_bytes = udp_socket.recv(&mut buf).expect("Cannot receive messages");
+
+    println!("Client: Message received");
+
+    let message = &buf[..number_of_bytes];
+    String::from_utf8_lossy(message).to_string()
 }
