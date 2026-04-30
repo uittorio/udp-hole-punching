@@ -143,7 +143,7 @@ fn run_chat(udp_socket: UdpSocket) {
         loop {
             let mut buf = String::new();
             if let Ok(_) = stdin().read_line(&mut buf) {
-                tx_stdin.send(buf).unwrap();
+                tx_stdin.send(buf.trim().to_string()).unwrap();
             } else {
                 tx_stdin.send("exit".to_string()).unwrap();
             }
