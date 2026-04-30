@@ -54,7 +54,11 @@ fn client(mut args: Args) {
         let address = SocketAddr::from_str(message_str.as_ref()).expect("Invalid address");
 
         udp_socket
-            .send_to(b"Ciao", address)
+            .connect(address)
+            .expect("Cannot connect to other client");
+
+        udp_socket
+            .send(b"Ciao")
             .expect("Cannot send message to other client");
 
         let number_of_bytes = udp_socket.recv(&mut buf).expect("Cannot receive messages");
@@ -65,7 +69,7 @@ fn client(mut args: Args) {
         println!("Received message from other client: {}", message_str);
 
         udp_socket
-            .send_to(b"Come stai", address)
+            .send(b"Come stai")
             .expect("Cannot send message to other client");
     } else {
         udp_socket
