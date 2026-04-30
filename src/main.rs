@@ -89,6 +89,7 @@ fn server() {
             if let Some(address_a) = map.remove(&key.to_string()) {
                 println!("address_a: {}", address_a.to_string());
                 let address_b = src_addr;
+                println!("address_b: {}", address_b.to_string());
 
                 if address_a == address_b {
                     println!("same address, reinserting");
